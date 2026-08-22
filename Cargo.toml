@@ -1,0 +1,26 @@
+[package]
+name = "nandokjeung"
+version = "1.0.0"
+edition = "2021"
+description = "난독증 — 정신뼝! 기반 텍스트 난독화 도구"
+license = "MIT"
+authors = ["zuku"]
+repository = "https://github.com/NiSeullent/nandokjeung"
+readme = "README.md"
+keywords = ["obfuscation", "esolang", "jeongsin-ppyung"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "nandokjeung"
+path = "src/main.rs"
+
+[lib]
+name = "nandokjeung"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+pretty_assertions = "1"
