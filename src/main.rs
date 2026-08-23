@@ -4,7 +4,8 @@ use nandokjeung::lexer::Lexer;
 use nandokjeung::obfuscator::{self, ObfuscateMode, ObfuscateOptions};
 use nandokjeung::parser::Parser as JpParser;
 use nandokjeung::semantic::SemanticAnalyzer;
-use nandokjeung::server::WebServer;
+use nandokjeung::api_server;
+use nandokjeung::fortress;
 use nandokjeung::CompileError;
 use std::fs;
 use std::io::{self, IsTerminal, Read, Write};
@@ -36,7 +37,7 @@ enum Commands {
         /// 출력 .jp 경로 (없으면 stdout)
         #[arg(short, long)]
         output: Option<PathBuf>,
-        /// print | heavy | literal
+        /// print | heavy | literal | fortress
         #[arg(short, long, default_value = "print")]
         mode: String,
         /// 문자열 분할 청크 수 (print/heavy)
@@ -70,6 +71,11 @@ enum Commands {
         #[arg(short, long, default_value_t = 8080)]
         port: u16,
     },
+    /// JSON API (obfuscate / reveal / relay)
+    Api {
+        #[arg(short, long, default_value_t = 8787)]
+        port: u16,
+    },
 }
 
 fn main() -> ExitCode {
@@ -87,6 +93,7 @@ fn main() -> ExitCode {
         Commands::Compile { file, output } => compile_file(&file, output.as_ref()),
         Commands::Check { file } => check_file(&file),
         Commands::Serve { file, port } => serve_file(&file, port),
+        Commands::Api { port } => run_api(port),
     };
 
     match result {
@@ -103,6 +110,10 @@ fn parse_mode(mode: &str) -> Result<ObfuscateMode, CompileError> {
         "print" => Ok(ObfuscateMode::Print),
         "heavy" => Ok(ObfuscateMode::Heavy),
         "literal" => Ok(ObfuscateMode::Literal),
+        "fortress" => {
+            // handled separately in obfuscate_cmd
+            Ok(ObfuscateMode::Heavy)
+        }
         other => Err(CompileError::new(
             "E070",
             format!("unknown mode '{other}' (use print, heavy, literal)"),
@@ -124,7 +135,28 @@ fn obfuscate_cmd(
         split_chunks: chunks.max(1),
     };
 
-    let payload = if let Some(t) = text {
+    let payload = if mode.eq_ignore_ascii_case("fortress") {
+        let nonce = uuid::Uuid::new_v4().to_string();
+        let text = if let Some(t) = text.clone() {
+            t
+        } else if let Some(path) = &input {
+            fs::read_to_string(path).map_err(|e| CompileError::new("E050", e.to_string(), 0, 0))?
+        } else if !io::stdin().is_terminal() {
+            let mut buf = String::new();
+            io::stdin()
+                .read_to_string(&mut buf)
+                .map_err(|e| CompileError::new("E050", e.to_string(), 0, 0))?;
+            buf
+        } else {
+            return Err(CompileError::new(
+                "E071",
+                "provide --text, --input, or pipe stdin".to_string(),
+                0,
+                0,
+            ));
+        };
+        fortress::fortress_obfuscate(&text, &nonce)?
+    } else if let Some(t) = text {
         obfuscator::obfuscate_text(&t, &opts)
     } else if let Some(path) = input {
         obfuscator::obfuscate_file(&path, &opts)?
@@ -209,8 +241,14 @@ fn run_file(path: &PathBuf) -> Result<(), CompileError> {
 }
 
 fn serve_file(path: &PathBuf, port: u16) -> Result<(), CompileError> {
-    let server = WebServer::from_file(path, port)?;
+    let server = nandokjeung::server::WebServer::from_file(path, port)?;
     server.run()
+}
+
+fn run_api(port: u16) -> Result<(), CompileError> {
+    let rt = tokio::runtime::Runtime::new()
+        .map_err(|e| CompileError::new("E060", e.to_string(), 0, 0))?;
+    rt.block_on(api_server::run_api(port))
 }
 
 fn io_flush() {

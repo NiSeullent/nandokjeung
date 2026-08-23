@@ -1,0 +1,26 @@
+name: 버그 리포트
+description: 동작 오류·회귀 보고
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 무엇이 문제인가요?
+      placeholder: 기대 동작 vs 실제 동작
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 방법
+      placeholder: "1. … 2. …"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 버전 / 환경
+      placeholder: "nandokjeung 1.0.0, Windows 11, Rust 1.82"
+    validations:
+      required: false

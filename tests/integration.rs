@@ -132,6 +132,15 @@ fn obfuscate_reveal_roundtrip() {
 }
 
 #[test]
+fn fortress_roundtrip_integration() {
+    use nandokjeung::fortress;
+    let text = "integration fortress payload";
+    let obf = fortress::fortress_obfuscate(text, "nonce-it").expect("obf");
+    let plain = fortress::fortress_reveal(&obf).expect("reveal");
+    assert_eq!(plain, text);
+}
+
+#[test]
 fn web_page_html() {
     let html = run_file(example_path("web.jp").to_str().unwrap());
     assert!(html.contains("<title>정신뼝?</title>"));

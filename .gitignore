@@ -7,3 +7,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+web/node_modules/
+web/.next/
+web/out/
+web/public/handler.jp
